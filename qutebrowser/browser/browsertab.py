@@ -35,6 +35,7 @@ from qutebrowser.utils import (utils, objreg, usertypes, log, qtutils,
 from qutebrowser.misc import miscwidgets, objects
 from qutebrowser.browser import mouse, hints
 
+from anytree import Node
 
 tab_id_gen = itertools.count(0)
 
@@ -647,6 +648,22 @@ class AbstractTab(QWidget):
                                   window=win_id)
         tab_registry[self.tab_id] = self
         objreg.register('tab', self, registry=self.registry)
+
+        # self.history = AbstractHistory(self)
+        # self.scroller = AbstractScroller(self, parent=self)
+        # self.caret = AbstractCaret(win_id=win_id, tab=self,
+        #                            mode_manager=mode_manager, parent=self)
+        # self.zoom = AbstractZoom(win_id=win_id)
+        # self.search = AbstractSearch(parent=self)
+        # self.printing = AbstractPrinting()
+        # self.elements = AbstractElements(self)
+        # self.action = AbstractAction()
+
+        # we assume the parent always exists if using tree tabs
+        if parent:
+            self.node = Node(self, parent = parent.tree_root)
+        else:
+            self.node = Node(self, parent = None)
 
         self.data = TabData()
         self._layout = miscwidgets.WrapperLayout(self)
