@@ -1,6 +1,7 @@
 # vim: ft=python fileencoding=utf-8 sts=4 sw=4 et:
 
 # Copyright 2014-2018 Florian Bruhin (The Compiler) <mail@qutebrowser.org>
+# Copyright 2018 Roosembert Palacios (Orbstheorem)
 #
 # This file is part of qutebrowser.
 #
@@ -23,9 +24,11 @@ Module attributes:
     _UNSET: Used as default argument in the constructor so default can be None.
 """
 
-import operator
 import collections.abc
 import enum
+import itertools
+import operator
+from typing import List
 
 import attr
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, QObject, QTimer
@@ -34,6 +37,87 @@ from qutebrowser.utils import log, qtutils, utils
 
 
 _UNSET = object()
+
+
+class TreeNode:
+    """Tree-like structure which recall its parents and children."""
+    pp_vertical = u'\u2502  '
+    pp_con = u'\u251c\u2500 '
+    pp_end = u'\u2514\u2500 '
+    pp_end_v = ''.join(itertools.repeat(' ', len(pp_vertical)))
+
+    def __init__(self, parent: 'TreeNode', children: List['TreeNode'] = None):
+        self.parent = parent  # allow orphan root node.
+        self.children = children if children else []
+
+        for child in self.children:
+            child.parent = self
+
+        if parent:
+            parent.adopt(self)
+
+    def reparent(self, new_parent: 'TreeNode'):
+        old_parent = self.parent
+        if old_parent:
+            old_parent.disown(self)
+        self.parent = new_parent
+        if new_parent:
+            new_parent.adopt(self)
+
+    def disown(self, child: 'TreeNode'):
+        assert(child)
+        if child in self.children:
+            self.children.remove(child)
+            child.parent = None
+        else:
+            pass # FIXME: This is a bug!
+
+    def adopt(self, new_child: 'TreeNode'):
+        assert(new_child)
+        if new_child not in self.children:
+            self.children.append(new_child)
+            new_child.parent = self
+        else:
+            pass # FIXME: This is logic error!
+
+    def promote(self, child: 'TreeNode'):
+        assert(child and child in self.children)
+        idx = self.children.index(child)
+        if idx > 0:
+            predecessor = self.children[idx-1]
+            self.children[idx-1], self.children[idx] = child, predecessor
+
+    def demote(self, child: 'TreeNode'):
+        assert(child and child in self.children)
+        idx = self.children.index(child)
+        if idx+1 < len(self.children):
+            successor = self.children[idx+1]
+            self.children[idx], self.children[idx+1] = successor, child
+
+    @classmethod
+    def render(cls, tree: 'TreeNode') -> List[str]:
+        init_child_render_prefix = (itertools.chain(
+            [cls.pp_con], itertools.repeat(cls.pp_vertical)))
+        last_child_render_prefix = (itertools.chain(
+            [cls.pp_end], itertools.repeat(cls.pp_end_v)))
+
+        init_children = tree.children[:-1]
+        last_child = tree.children[-1] if tree.children else None
+
+        init_children_repr = itertools.chain.from_iterable(
+            [["".join(prefix_and_rendered_child)
+                for prefix_and_rendered_child
+                    in zip(init_child_render_prefix, cls.render(child))]
+                        for child in init_children])
+
+        if last_child:
+            last_child_repr = [''.join(prefix_and_rendered_child)
+                for prefix_and_rendered_child
+                    in zip(last_child_render_prefix, cls.render(last_child))]
+        else:
+            last_child_repr = []
+
+        return ([''] + list(init_children_repr) + list(last_child_repr))
 
 
 class NeighborList(collections.abc.Sequence):
