@@ -2258,7 +2258,7 @@ class CommandDispatcher:
             tab.node.parent = grandparent
 
 
-        self._tabbed_browser.update_tab_titles()
+        self._tabbed_browser._update_tab_titles()
         self._tabbed_browser.update_tree_tab_positions('command: tree_tab_promote')
 
     @cmdutils.register(instance='command-dispatcher', scope='window')
@@ -2282,7 +2282,7 @@ class CommandDispatcher:
 
                 cur_node.parent = siblings[node_idx]
 
-                self._tabbed_browser.update_tab_titles()
+                self._tabbed_browser._update_tab_titles()
                 self._tabbed_browser.update_tree_tab_positions('command: tree_tab_demote')
 
     @cmdutils.register(instance='command-dispatcher', scope='window')
